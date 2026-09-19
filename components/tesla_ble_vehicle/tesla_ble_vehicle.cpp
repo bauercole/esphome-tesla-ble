@@ -1559,11 +1559,11 @@ namespace esphome
             // Need to create a vehicle action message
               if (long_param == 0)
               {
-                return_code = actions_buildCarServerVehicleActionMessage (static_cast<int32_t>(param), static_message_buffer_, &message_length, get_action_detail(action).actionTag);
+                return_code = actions_buildCarServerVehicleActionMessage (static_cast<int32_t>(param), static_message_buffer_, &message_length, get_action_detail(action).actionTag, 0, action);
               }
               else
               {
-                return_code = actions_buildCarServerVehicleActionMessage (0, static_message_buffer_, &message_length, get_action_detail(action).actionTag, long_param);
+                return_code = actions_buildCarServerVehicleActionMessage (static_cast<int32_t>(param), static_message_buffer_, &message_length, get_action_detail(action).actionTag, long_param, action);
               }
               if ((action == BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH) and (param == 1))
               { // If charging has been requested, enable continuous polling
@@ -1974,6 +1974,51 @@ namespace esphome
               else
             {
               ESP_LOGI (TAG, "No data to set cabin overheat temperature");
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_left)
+            {
+              int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_left.seat_heater_left;
+              publishSensor (NumericSensorId::SeatHeaterFrontLeft, static_cast<float>(val));
+              if (seat_heater_front_left_select_ != nullptr)
+              {
+                seat_heater_front_left_select_->publish_state(lookup_seat_heater_level(val));
+              }
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_right)
+            {
+              int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_right.seat_heater_right;
+              publishSensor (NumericSensorId::SeatHeaterFrontRight, static_cast<float>(val));
+              if (seat_heater_front_right_select_ != nullptr)
+              {
+                seat_heater_front_right_select_->publish_state(lookup_seat_heater_level(val));
+              }
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_rear_left)
+            {
+              int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_rear_left.seat_heater_rear_left;
+              publishSensor (NumericSensorId::SeatHeaterRearLeft, static_cast<float>(val));
+              if (seat_heater_rear_left_select_ != nullptr)
+              {
+                seat_heater_rear_left_select_->publish_state(lookup_seat_heater_level(val));
+              }
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_rear_center)
+            {
+              int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_rear_center.seat_heater_rear_center;
+              publishSensor (NumericSensorId::SeatHeaterRearCenter, static_cast<float>(val));
+              if (seat_heater_rear_center_select_ != nullptr)
+              {
+                seat_heater_rear_center_select_->publish_state(lookup_seat_heater_level(val));
+              }
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_rear_right)
+            {
+              int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_rear_right.seat_heater_rear_right;
+              publishSensor (NumericSensorId::SeatHeaterRearRight, static_cast<float>(val));
+              if (seat_heater_rear_right_select_ != nullptr)
+              {
+                seat_heater_rear_right_select_->publish_state(lookup_seat_heater_level(val));
+              }
             }
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
