@@ -314,6 +314,7 @@ namespace esphome
             CarServer_Response static_carserver_response_;
             unsigned char static_message_buffer_[UniversalMessage_RoutableMessage_size];
             CarServer_Action actions_action_message_;
+            CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction actions_seat_heater_action_;
             /*
             * Tracks the Infotainment connection status. In theory it goes Unknown when the car is away but it can also happen if the
             * BLE connection drops for long enough. If it recovers the car is likely to be asleep and so Infotainment sensors will remain

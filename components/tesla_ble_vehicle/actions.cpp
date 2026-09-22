@@ -248,24 +248,24 @@ int TeslaBLEVehicle::actions_buildCarServerVehicleActionMessage (
 			return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
 		}
 
-		CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction heater_action = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_init_default;
-		heater_action.which_seat_position = seat_position_tag;
+		actions_seat_heater_action_ = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_init_default;
+		actions_seat_heater_action_.which_seat_position = seat_position_tag;
 		switch (seat_position_tag)
 		{
 		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_FRONT_LEFT_tag:
-			heater_action.seat_position.CAR_SEAT_FRONT_LEFT = CarServer_Void_init_default;
+			actions_seat_heater_action_.seat_position.CAR_SEAT_FRONT_LEFT = CarServer_Void_init_default;
 			break;
 		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_FRONT_RIGHT_tag:
-			heater_action.seat_position.CAR_SEAT_FRONT_RIGHT = CarServer_Void_init_default;
+			actions_seat_heater_action_.seat_position.CAR_SEAT_FRONT_RIGHT = CarServer_Void_init_default;
 			break;
 		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_REAR_LEFT_tag:
-			heater_action.seat_position.CAR_SEAT_REAR_LEFT = CarServer_Void_init_default;
+			actions_seat_heater_action_.seat_position.CAR_SEAT_REAR_LEFT = CarServer_Void_init_default;
 			break;
 		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_REAR_CENTER_tag:
-			heater_action.seat_position.CAR_SEAT_REAR_CENTER = CarServer_Void_init_default;
+			actions_seat_heater_action_.seat_position.CAR_SEAT_REAR_CENTER = CarServer_Void_init_default;
 			break;
 		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_REAR_RIGHT_tag:
-			heater_action.seat_position.CAR_SEAT_REAR_RIGHT = CarServer_Void_init_default;
+			actions_seat_heater_action_.seat_position.CAR_SEAT_REAR_RIGHT = CarServer_Void_init_default;
 			break;
 		default:
 			break;
@@ -274,20 +274,20 @@ int TeslaBLEVehicle::actions_buildCarServerVehicleActionMessage (
 		switch (set_value)
 		{
 		case 0:
-			heater_action.which_seat_heater_level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag;
-			heater_action.seat_heater_level.SEAT_HEATER_OFF = CarServer_Void_init_default;
+			actions_seat_heater_action_.which_seat_heater_level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag;
+			actions_seat_heater_action_.seat_heater_level.SEAT_HEATER_OFF = CarServer_Void_init_default;
 			break;
 		case 1:
-			heater_action.which_seat_heater_level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag;
-			heater_action.seat_heater_level.SEAT_HEATER_LOW = CarServer_Void_init_default;
+			actions_seat_heater_action_.which_seat_heater_level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag;
+			actions_seat_heater_action_.seat_heater_level.SEAT_HEATER_LOW = CarServer_Void_init_default;
 			break;
 		case 2:
-			heater_action.which_seat_heater_level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag;
-			heater_action.seat_heater_level.SEAT_HEATER_MED = CarServer_Void_init_default;
+			actions_seat_heater_action_.which_seat_heater_level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag;
+			actions_seat_heater_action_.seat_heater_level.SEAT_HEATER_MED = CarServer_Void_init_default;
 			break;
 		case 3:
-			heater_action.which_seat_heater_level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag;
-			heater_action.seat_heater_level.SEAT_HEATER_HIGH = CarServer_Void_init_default;
+			actions_seat_heater_action_.which_seat_heater_level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag;
+			actions_seat_heater_action_.seat_heater_level.SEAT_HEATER_HIGH = CarServer_Void_init_default;
 			break;
 		default:
 			ESP_LOGE (TAG, "Invalid seat heater level %" PRId32, set_value);
@@ -301,7 +301,7 @@ int TeslaBLEVehicle::actions_buildCarServerVehicleActionMessage (
 					return false;
 				return pb_encode_submessage(stream, CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_fields, act);
 			};
-		vehicle_action_msg_.hvacSeatHeaterActions.hvacSeatHeaterAction.arg = &heater_action;
+		vehicle_action_msg_.hvacSeatHeaterActions.hvacSeatHeaterAction.arg = &actions_seat_heater_action_;
 		break;
 	}
 	default:

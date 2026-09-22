@@ -851,8 +851,23 @@ namespace esphome
                         return;
                       }
                     }
+                    else
+                    {
+                      ESP_LOGW(TAG, "[%s] Car rejected command: %s", current_command.execute_name.c_str(), static_carserver_response_.actionStatus.result_reason.reason.plain_text);
+                      if (current_command.state == BLECommandState::WAITING_FOR_RESPONSE)
+                      {
+                        command_queue_.pop();
+                        return;
+                      }
+                    }
                     break;
                   default:
+                    ESP_LOGW(TAG, "[%s] Car returned error with unknown reason tag %d", current_command.execute_name.c_str(), static_carserver_response_.actionStatus.result_reason.which_reason);
+                    if (current_command.state == BLECommandState::WAITING_FOR_RESPONSE)
+                    {
+                      command_queue_.pop();
+                      return;
+                    }
                     break;
                   }
                 }
