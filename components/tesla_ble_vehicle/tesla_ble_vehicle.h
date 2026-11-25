@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <iterator>
 #include <vector>
@@ -20,6 +21,7 @@
 #include <esphome/core/log.h>
 #include <esphome/components/api/custom_api_device.h>
 
+#include <car_server.pb.h>
 #include <universal_message.pb.h>
 #include <vcsec.pb.h>
 #include <errors.h>
@@ -71,6 +73,7 @@ namespace esphome
             SET_SEAT_HEATER,
             SET_AUTO_SEAT_CLIMATE,
             GET_SOFTWARE_UPDATE_STATE,
+            SET_CLIMATE_KEEPER,
             _COUNT  // sentinel value to get count of entries
         };
         enum class AllowedMsg // The type of messages to send
@@ -109,7 +112,7 @@ namespace esphome
             GetOnSet getOnSet;
             int numberUpdatesBetweenGets; // Only used for GetVehicleDataMessage
         };
-        static constexpr std::array<ActionMessageDetail, 32> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
+        static constexpr std::array<ActionMessageDetail, 33> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
         {{
             {BLE_CarServer_VehicleAction::DO_NOTHING,                       "",                          AllowedMsg::Empty,                 0,                                                              GetOnSet::Invalid,                0},
             {BLE_CarServer_VehicleAction::GET_CHARGE_STATE,                 "getChargeState",            AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    GetOnSet::Invalid,                1},
@@ -143,6 +146,7 @@ namespace esphome
             {BLE_CarServer_VehicleAction::SET_SEAT_HEATER,                  "setSeatHeater",             AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacSeatHeaterActions_tag,              GetOnSet::GetClimateState,        0},
             {BLE_CarServer_VehicleAction::SET_AUTO_SEAT_CLIMATE,            "setAutoSeatClimate",        AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_autoSeatClimateAction_tag,              GetOnSet::GetClimateState,        0},
             {BLE_CarServer_VehicleAction::GET_SOFTWARE_UPDATE_STATE,        "getSoftwareUpdateState",    AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getSoftwareUpdateState_tag,           GetOnSet::Invalid,               13},
+            {BLE_CarServer_VehicleAction::SET_CLIMATE_KEEPER,               "setClimateKeeper",          AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacClimateKeeperAction_tag,            GetOnSet::GetClimateState,        0},
         }};
         static_assert(ACTION_SPECIFICS.size() == static_cast<std::size_t>(BLE_CarServer_VehicleAction::_COUNT), "ACTION_SPECIFICS out of sync with enum");
         static const char *const TAG = "tesla_ble_vehicle";
@@ -283,6 +287,8 @@ namespace esphome
             Count
         };
 
+        class TeslaBLEClimate;
+
         class TeslaBLEVehicle : public PollingComponent,
                                 public ble_client::BLEClientNode,
                                 public esphome::api::CustomAPIDevice
@@ -358,7 +364,10 @@ namespace esphome
     
             int sendVCSECActionMessage(VCSEC_RKEAction_E action);
             int sendVCSECClosureMoveRequestMessage (int moveWhat, VCSEC_ClosureMoveType_E moveType);
-            int sendCarServerVehicleActionMessage(BLE_CarServer_VehicleAction action, int param, uint64_t long_param = 0);
+            int sendCarServerVehicleActionMessage(BLE_CarServer_VehicleAction action, int param, uint64_t long_param = 0, float float_param = NAN);
+            int setClimateTemp(float temp_celsius) {
+                return sendCarServerVehicleActionMessage(BLE_CarServer_VehicleAction::SET_CLIMATE_TEMP, 0, 0, temp_celsius);
+            }
             int sendSessionInfoRequest(UniversalMessage_Domain domain);
             int sendVCSECInformationRequest(void);
             void enqueueVCSECInformationRequest(bool force = false);
@@ -375,7 +384,7 @@ namespace esphome
                                            float longitude
                                           );
             int actions_buildCarServerGetVehicleDataMessage(pb_byte_t *output_buffer, size_t *output_length, int which_get);
-            int actions_buildCarServerVehicleActionMessage (int32_t parameter, pb_byte_t *output_buffer, size_t *output_length, int which_tag, uint64_t long_param = 0);
+            int actions_buildCarServerVehicleActionMessage (int32_t parameter, pb_byte_t *output_buffer, size_t *output_length, int which_tag, uint64_t long_param = 0, float float_param = NAN);
 
             int wake_on_boot_ = 0; // != 0 wakes car on device boot
 
@@ -403,30 +412,7 @@ namespace esphome
             }
             // sensors
             // set sensors to unknown (e.g. when vehicle is disconnected)
-            void setUnknown (bool has_state) // has_state is an anachronism
-            {
-                for (auto* s : numeric_sensors_)
-                    if (s) s->publish_state(NAN);
-                for (auto* s : text_sensors_)
-                    if (s) s->publish_state("Unknown");
-                for (auto* s : binary_sensors_)
-                    if (s) s->invalidate_state();
-                if (cabin_overheat_select_)
-                    cabin_overheat_select_->publish_state("Unknown");
-                if (cabin_overheat_temp_select_)
-                    cabin_overheat_temp_select_->publish_state("Unknown");
-                if (seat_heater_front_left_select_)
-                    seat_heater_front_left_select_->publish_state("Unknown");
-                if (seat_heater_front_right_select_)
-                    seat_heater_front_right_select_->publish_state("Unknown");
-                if (seat_heater_rear_left_select_)
-                    seat_heater_rear_left_select_->publish_state("Unknown");
-                if (seat_heater_rear_center_select_)
-                    seat_heater_rear_center_select_->publish_state("Unknown");
-                if (seat_heater_rear_right_select_)
-                    seat_heater_rear_right_select_->publish_state("Unknown");
-                infotainment_state_unknown_ = true;
-            }
+            void setUnknown (bool has_state);
             template<typename E>
             constexpr auto to_underlying (E e) noexcept
             {
@@ -487,6 +473,9 @@ namespace esphome
             }
             void set_seat_heater_rear_right_select (select::Select *sel) {
                 seat_heater_rear_right_select_ = sel;
+            }
+            void set_climate (TeslaBLEClimate *climate) {
+                climate_ = climate;
             }
             inline static constexpr std::array<std::pair<int, const char*>, 4> SEAT_HEATER_LEVEL_MAP {{
                 // The car reports seat heater levels as plain integers in ClimateState (there are no tag constants for them)
@@ -620,6 +609,7 @@ namespace esphome
             select::Select  *seat_heater_rear_left_select_{nullptr};
             select::Select  *seat_heater_rear_center_select_{nullptr};
             select::Select  *seat_heater_rear_right_select_{nullptr};
+            TeslaBLEClimate *climate_{nullptr};
             std::vector<unsigned char> ble_read_buffer_;
 
             void initializeFlash();

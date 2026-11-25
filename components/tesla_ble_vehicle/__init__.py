@@ -8,6 +8,7 @@ from typing import Dict, Any
 
 CODEOWNERS = ["@PedroKTFC"]
 DEPENDENCIES = ["ble_client"]
+AUTO_LOAD = ["climate"]
 
 class SensorTypes(Enum):
     BINARY =  auto()

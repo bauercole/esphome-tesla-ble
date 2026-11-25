@@ -85,7 +85,8 @@ int TeslaBLEVehicle::actions_buildCarServerVehicleActionMessage (
 	pb_byte_t *output_buffer,
 	size_t *output_length,
 	int which_tag,
-	uint64_t long_param)
+	uint64_t long_param,
+	float float_param)
 {
 	// Build generic part action.action_msg.vehicleAction
 	actions_action_message_                                                   = CarServer_Action_init_default;
@@ -163,9 +164,27 @@ int TeslaBLEVehicle::actions_buildCarServerVehicleActionMessage (
 		vehicle_action_msg_.hvacSetPreconditioningMaxAction.on = (set_value != 0);
 		break;
 	case CarServer_VehicleAction_hvacTemperatureAdjustmentAction_tag:
-		vehicle_action_msg_.hvacTemperatureAdjustmentAction                       = CarServer_HvacTemperatureAdjustmentAction_init_default;
-		vehicle_action_msg_.hvacTemperatureAdjustmentAction.driver_temp_celsius   = set_value;
-		vehicle_action_msg_.hvacTemperatureAdjustmentAction.passenger_temp_celsius = set_value;
+	{
+		float temp_celsius = std::isnan(float_param) ? static_cast<float>(set_value) : float_param;
+		vehicle_action_msg_.hvacTemperatureAdjustmentAction                        = CarServer_HvacTemperatureAdjustmentAction_init_default;
+		vehicle_action_msg_.hvacTemperatureAdjustmentAction.driver_temp_celsius    = temp_celsius;
+		vehicle_action_msg_.hvacTemperatureAdjustmentAction.passenger_temp_celsius = temp_celsius;
+		break;
+	}
+	case CarServer_VehicleAction_hvacClimateKeeperAction_tag:
+		switch (set_value)
+		{
+		case CarServer_HvacClimateKeeperAction_ClimateKeeperAction_E_ClimateKeeperAction_Off:
+		case CarServer_HvacClimateKeeperAction_ClimateKeeperAction_E_ClimateKeeperAction_On:
+		case CarServer_HvacClimateKeeperAction_ClimateKeeperAction_E_ClimateKeeperAction_Dog:
+		case CarServer_HvacClimateKeeperAction_ClimateKeeperAction_E_ClimateKeeperAction_Camp:
+			vehicle_action_msg_.hvacClimateKeeperAction                     = CarServer_HvacClimateKeeperAction_init_default;
+			vehicle_action_msg_.hvacClimateKeeperAction.ClimateKeeperAction = static_cast<CarServer_HvacClimateKeeperAction_ClimateKeeperAction_E>(set_value);
+			break;
+		default:
+			ESP_LOGE (TAG, "Tag type %i, unexpected climate keeper set_value received %" PRId32, which_tag, set_value);
+			return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
+		}
 		break;
 	case CarServer_VehicleAction_mediaPlayAction_tag:
 		vehicle_action_msg_.mediaPlayAction             = CarServer_MediaPlayAction_init_default;

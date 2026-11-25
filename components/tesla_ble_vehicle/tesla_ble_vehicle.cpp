@@ -20,6 +20,7 @@
 
 #include "log.h"
 #include "tesla_ble_vehicle.h"
+#include "tesla_ble_climate.h"
 
 namespace esphome
 {
@@ -1601,7 +1602,34 @@ namespace esphome
           action_str);
     }
 
-    int TeslaBLEVehicle::sendCarServerVehicleActionMessage(BLE_CarServer_VehicleAction action, int param, uint64_t long_param)
+    void TeslaBLEVehicle::setUnknown (bool has_state) // has_state is an anachronism
+    {
+      for (auto* s : numeric_sensors_)
+        if (s) s->publish_state(NAN);
+      for (auto* s : text_sensors_)
+        if (s) s->publish_state("Unknown");
+      for (auto* s : binary_sensors_)
+        if (s) s->invalidate_state();
+      if (cabin_overheat_select_)
+        cabin_overheat_select_->publish_state("Unknown");
+      if (cabin_overheat_temp_select_)
+        cabin_overheat_temp_select_->publish_state("Unknown");
+      if (seat_heater_front_left_select_)
+        seat_heater_front_left_select_->publish_state("Unknown");
+      if (seat_heater_front_right_select_)
+        seat_heater_front_right_select_->publish_state("Unknown");
+      if (seat_heater_rear_left_select_)
+        seat_heater_rear_left_select_->publish_state("Unknown");
+      if (seat_heater_rear_center_select_)
+        seat_heater_rear_center_select_->publish_state("Unknown");
+      if (seat_heater_rear_right_select_)
+        seat_heater_rear_right_select_->publish_state("Unknown");
+      if (climate_ != nullptr)
+        climate_->set_unknown();
+      infotainment_state_unknown_ = true;
+    }
+
+    int TeslaBLEVehicle::sendCarServerVehicleActionMessage(BLE_CarServer_VehicleAction action, int param, uint64_t long_param, float float_param)
     /*
     *   Causes the appropriate message to be built using the ACTION_SPECIFICS table.
     */
@@ -1618,7 +1646,7 @@ namespace esphome
       std::string action_str;
       action_str = get_action_detail(action).action_str;
       std::function<int()> execute_cmd;
-      execute_cmd = [this, action, action_str, param, long_param]()
+      execute_cmd = [this, action, action_str, param, long_param, float_param]()
         {
           size_t message_length = 0;
           int return_code = 0;
@@ -1632,7 +1660,7 @@ namespace esphome
               break;
             case AllowedMsg::VehicleActionMessage:
             // Need to create a vehicle action message
-              return_code = actions_buildCarServerVehicleActionMessage (static_cast<int32_t>(param), static_message_buffer_, &message_length, get_action_detail(action).actionTag, long_param);
+              return_code = actions_buildCarServerVehicleActionMessage (static_cast<int32_t>(param), static_message_buffer_, &message_length, get_action_detail(action).actionTag, long_param, float_param);
               if ((action == BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH) and (param == 1))
               { // If charging has been requested, enable continuous polling
                 car_is_charging_ = ChargingJustStarted; //true;
@@ -1660,7 +1688,14 @@ namespace esphome
           }
           return 0;
         };
+      if (!std::isnan(float_param))
+      {
+        ESP_LOGI(TAG, "[%s] Adding command to queue (param=%.1f)", action_str.c_str(), float_param);
+      }
+      else
+      {
         ESP_LOGI(TAG, "[%s] Adding command to queue (param=%d)", action_str.c_str(), static_cast<int>(param));
+      }
       if (get_action_detail(action).whichMsg == AllowedMsg::VehicleActionMessage)
       {
         placeAtFrontOfQueue (UniversalMessage_Domain_DOMAIN_INFOTAINMENT, execute_cmd, action_str, action);
@@ -1955,6 +1990,11 @@ namespace esphome
             // Rear right
             publish_which_sensor (climate_state.which_optional_seat_heater_rear_right, seat_heater_rear_right_select_,
                                   [&]() {return lookup_seat_heater_level (climate_state.optional_seat_heater_rear_right.seat_heater_rear_right);}, "rear right seat heater");
+
+            if (climate_ != nullptr)
+            {
+              climate_->update_from_climate_state(climate_state);
+            }
 
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
